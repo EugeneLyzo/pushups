@@ -29,13 +29,13 @@ export default class TimeCountdown extends Component {
 
 
   _updateCountdown() {
-    let countdownTime = this.state.countdownTime || 0;
+    const countdownTime = this.state.countdownTime || 0;
     if (countdownTime > 0) {
       this.setState({
         countdownTime: countdownTime - 1,
       });
       if (countdownTime === 1) {
-        Vibration.vibrate([0, 500, 200, 500])
+        Vibration.vibrate([0, 500, 200, 500]);
       }
     }
   }
@@ -46,6 +46,11 @@ export default class TimeCountdown extends Component {
     );
   }
 }
+
+TimeCountdown.propTypes = {
+  countdownTime: React.PropTypes.number,
+};
+
 
 const styles = StyleSheet.create({
   timerCountdown: {
