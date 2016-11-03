@@ -1,7 +1,6 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
- * @flow
+ * Push Ups Plan for 6 weeks course
+ * @author Eugene Lyzo
  */
 
 import React, { Component } from 'react';
@@ -11,9 +10,13 @@ import {
   StyleSheet,
   Text,
   TouchableHighlight,
-  Vibration,
   View,
 } from 'react-native';
+import Drawer from 'react-native-drawer';
+
+import Day from './src/components/Day';
+import TimeCountdown from './src/components/TimeCountdown';
+import Week from './src/components/Week';
 
 const PLAN = [
   {
@@ -224,208 +227,85 @@ export default class pushups extends Component {
   }
 
   onPressAttempt(attemptId) {
-    weekId = this.state.selectedDay.week;
-    day = this.state.selectedDay.day;
-    console.log('onPressAttempt', arguments, this, this.userPlan[weekId]['day' + day][attemptId]);
-    this.userPlan[weekId]['day' + day][attemptId].done =
-      !this.userPlan[weekId]['day' + day][attemptId].done;
-    this._updateLists(weekId, day);
+    let week = this.state.selectedDay.week;
+    let day = this.state.selectedDay.day;
+    // console.log('onPressAttempt', arguments, this, this.userPlan[week]['day' + day][attemptId]);
+    this.userPlan[week]['day' + day][attemptId].done =
+      !this.userPlan[week]['day' + day][attemptId].done;
+    this._updateLists(week, day);
     this.setState({
-      selectedDay: { week: weekId, day: day },
+      selectedDay: { week, day },
       countdownTime: TIMER_TIME,
     });
   }
 
   render() {
     return (
-
-      <View style={styles.container}>
-        <Text style={styles.weeksCaption}>
-          Push ups Plan:
-        </Text>
-        <View style={{ flexDirection: 'row' }}>
-          <ListView
-            dataSource={this.lists.weeks}
-            renderRow={(week, sectionID, rowID) => <Week
-              week={week}
-              onPressDay={(weekId, day) => this.onPressDay(weekId, day)}
-              selectedWeek={week.id === this.state.selectedDay.week}
-              selectedDay={this.state.selectedDay.day}
-            >{week.name}</Week>}
-          />
-          <ListView
-            dataSource={this.lists.selectedDay}
-            renderRow={(day, sectionID, rowID) => <Day
-              day={day}
-              attemptId={rowID}
-              onPressAttempt={(attemptId) => this.onPressAttempt(attemptId)}
-            ></Day>}
-          />
-          <View style={styles.timer}><TimeCountdown countdownTime={this.state.countdownTime} /></View>
+      <Drawer
+        type="displace"
+        content={(
+          <View>
+            <View><Text>Some left menu</Text></View>
+            <View>
+              <TouchableHighlight onPress={() => this._drawer.close()}><Text>Close panel</Text></TouchableHighlight>
+            </View>
+          </View>
+        )}
+        tapToClose={true}
+        openDrawerOffset={0.2} // 20% gap on the right side of drawer
+        panCloseMask={0.2}
+        closedDrawerOffset={-3}
+        styles={drawerStyles}
+        tweenHandler={(ratio) => ({
+          main: { opacity:(2-ratio)/2 }
+        })}
+        ref={(ref) => (this._drawer = ref)}
+      >
+        <View style={styles.container}>
+          <Text style={styles.weeksCaption}>
+            Push ups Plan:
+          </Text>
+          <TouchableHighlight
+            onPress={() => this._drawer.open()}
+          ><Text>Open panel</Text></TouchableHighlight>
+          <View style={{ flexDirection: 'row' }}>
+            <ListView
+              dataSource={this.lists.weeks}
+              renderRow={(week, sectionID, rowID) => <Week
+                week={week}
+                onPressDay={(weekId, day) => this.onPressDay(weekId, day)}
+                selectedWeek={week.id === this.state.selectedDay.week}
+                selectedDay={this.state.selectedDay.day}
+              >{week.name}</Week>}
+            />
+            <ListView
+              dataSource={this.lists.selectedDay}
+              renderRow={(day, sectionID, rowID) => <Day
+                day={day}
+                attemptId={rowID}
+                onPressAttempt={(attemptId) => this.onPressAttempt(attemptId)}
+              />}
+            />
+            <View style={styles.timer}><TimeCountdown countdownTime={this.state.countdownTime} /></View>
+          </View>
         </View>
-      </View>
+      </Drawer>
     );
   }
 
-}
-
-
-export class Week extends Component {
-
-  _checkDay(day) {
-    status = 'Wait';
-    attemptsDone = 0;
-    for (attempt of day) {
-      if (attempt.done) {
-        attemptsDone++;
-      }
-    }
-    if (attemptsDone > 0) status = 'InProgress';
-    if (attemptsDone === day.length) status = 'Done';
-    return status;
-  }
-  _onPressDay(weekId, day) {
-    this.props.onPressDay(weekId, day);
-  }
-
-  render() {
-    return (
-      <View style={styles.week}>
-        <Text
-          style={[
-            styles[this.props.week.complete ? 'weekDone' : 'weekWait'],
-            this.props.selectedWeek ? styles.weekSelected : null
-          ]}
-        >
-          {this.props.week.name}:
-        </Text>
-        <TouchableHighlight onPress={(e) => this._onPressDay(this.props.week.id, 1)}>
-          <Text
-            style={[
-              styles['dayStatus' + this._checkDay(this.props.week.day1)],
-              this.props.selectedWeek && this.props.selectedDay == 1 ? styles.daySelected : null
-            ]
-          }>
-            Понедельник
-            {this.props.selectedWeek && this.props.selectedDay == 1 ? ' :::: ' : ''}
-          </Text>
-        </TouchableHighlight>
-        <TouchableHighlight onPress={(e) => this._onPressDay(this.props.week.id, 2)}>
-          <Text
-            style={[
-              styles['dayStatus' + this._checkDay(this.props.week.day2)],
-              this.props.selectedWeek && this.props.selectedDay == 2 ? styles.daySelected : null
-            ]
-            }>
-            Среда
-            {this.props.selectedWeek && this.props.selectedDay == 2 ? ' :::: ' : ''}
-          </Text>
-        </TouchableHighlight>
-        <TouchableHighlight onPress={(e) => this._onPressDay(this.props.week.id, 3)}>
-          <Text
-            style={[
-              styles['dayStatus' + this._checkDay(this.props.week.day3)],
-              this.props.selectedWeek && this.props.selectedDay == 3 ? styles.daySelected : null
-            ]
-            }>
-            Пятница
-            {this.props.selectedWeek && this.props.selectedDay == 3 ? ' :::: ' : ''}
-          </Text>
-        </TouchableHighlight>
-      </View>
-    );
-  }
-}
-
-
-export class Day extends Component {
-
-  _onPressAttempt() {
-    // console.log('_onPressAttempt', arguments, this);
-    this.props.onPressAttempt(this.props.attemptId);
-  }
-
-  render() {
-    return (
-      <View style={styles.day}>
-        <TouchableHighlight onPress={(e) => this._onPressAttempt()}>
-          <Text
-            style={[
-              styles.attempt,
-              this.props.day.done ? styles.attemptDone : null
-            ]}
-          >{this.props.day.count}</Text>
-        </TouchableHighlight>
-      </View>
-    );
-  }
-
-}
-
-
-export class TimeCountdown extends Component {
-
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      countdownTime: this.props.countdownTime,
-    };
-
-    setInterval(() => this._updateCountdown(), 1000);
-  }
-
-  componentWillReceiveProps(nextProps) {
-    if (nextProps.countdownTime !== this.state.countdownTime) {
-      this.setState({ countdownTime: nextProps.countdownTime });
-    }
-  }
-
-
-  _updateCountdown() {
-    let countdownTime = this.state.countdownTime || 0;
-    if (countdownTime > 0) {
-      this.setState({
-        countdownTime: countdownTime - 1,
-      });
-      if (countdownTime === 1) {
-        Vibration.vibrate([0, 500, 200, 500])
-      }
-    }
-  }
-
-  render() {
-    return (
-      <Text style={styles.timerCountdown}>{this.state.countdownTime}</Text>
-    );
-  }
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    // flex: 1,
+    // justifyContent: 'center',
+    // alignItems: 'center',
     backgroundColor: '#F5FCFF',
   },
   weeksCaption: {
     fontSize: 20,
     textAlign: 'center',
     margin: 10,
-  },
-  week: {
-    flex: 0.5,
-    marginTop: 10,
-    marginLeft: 20,
-  },
-  weekSelected: {
-    fontWeight: 'bold',
-  },
-  weekDone: {
-    color: 'green',
-  },
-  weekWait: {
-    color: 'blue',
   },
   daySelected: {
     fontWeight: 'bold'
@@ -439,25 +319,23 @@ const styles = StyleSheet.create({
   dayStatusInProgress: {
     color: 'orange',
   },
-  day: {
-    flex: 0.2,
-    marginLeft: 20,
-    marginTop: 10,
-  },
-  attempt: {
-    fontSize: 30,
-  },
-  attemptDone: {
-    textDecorationLine: 'line-through',
-  },
   timer: {
-    flex: 0.4,
+    // flex: 0.4,
     margin: 10,
     marginRight: 20,
   },
-  timerCountdown: {
-    fontSize: 36,
-  },
 });
+
+const drawerStyles = {
+  drawer: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    backgroundColor: 'white',
+    height: 400,
+    width: 200,
+  },
+  main: {paddingLeft: 3},
+}
 
 AppRegistry.registerComponent('pushups', () => pushups);
