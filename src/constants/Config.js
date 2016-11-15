@@ -1,6 +1,6 @@
 const CONFIG = {
   lang: 'ru',
-  timerTime: 15,
+  timerTime: 60,
   storeUserDataKey: '@PushUpsAsyncStorage:userData',
 };
 
