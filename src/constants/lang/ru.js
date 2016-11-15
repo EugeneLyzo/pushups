@@ -16,6 +16,9 @@ const LANG_RU = {
     'Суббота',
     'Воскресенье',
   ],
+  settings_days: 'Дни недели',
+  settings_days_1: 'ПН-СР-ПТ',
+  settings_days_2: 'ВТ-ЧТ-СБ',
 };
 
 export default LANG_RU;

@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   Vibration,
+  ToastAndroid,
 } from 'react-native';
 
 export default class TimeCountdown extends Component {
@@ -18,15 +19,19 @@ export default class TimeCountdown extends Component {
       countdownTime: this.props.countdownTime,
     };
 
+    this.attempt = 0;
+
     setInterval(() => this._updateCountdown(), 1000);
   }
 
   componentWillReceiveProps(nextProps) {
-    if (nextProps.countdownTime !== this.state.countdownTime) {
-      this.setState({ countdownTime: nextProps.countdownTime });
+    if (nextProps.attempt !== this.attempt) {
+      this.attempt = nextProps.attempt;
+      this.setState({
+        countdownTime: nextProps.countdownTime,
+      });
     }
   }
-
 
   _updateCountdown() {
     const countdownTime = this.state.countdownTime || 0;
@@ -36,6 +41,11 @@ export default class TimeCountdown extends Component {
       });
       if (countdownTime === 1) {
         Vibration.vibrate([0, 500, 200, 500]);
+        ToastAndroid.showWithGravity(
+          'GO GO GO!!!',
+          ToastAndroid.LONG,
+          ToastAndroid.CENTER,
+        );
       }
     }
   }
@@ -49,6 +59,7 @@ export default class TimeCountdown extends Component {
 
 TimeCountdown.propTypes = {
   countdownTime: React.PropTypes.number,
+  attempt: React.PropTypes.number,
 };
 
 

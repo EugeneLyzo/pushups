@@ -10,6 +10,8 @@ import {
   View,
 } from 'react-native';
 
+import Translater from '../utils/Translater';
+
 export default class Week extends Component {
 
   checkDay(day) {
@@ -37,7 +39,7 @@ export default class Week extends Component {
             this.props.selectedWeek ? styles.week_selected : null,
           ]}
         >
-          {this.props.lang.week} {this.props.week.name}:
+          {Translater.t('week')} {this.props.week.name}:
         </Text>
         <TouchableHighlight onPress={() => this._onPressDay(this.props.week.id, 1)}>
           <Text
@@ -47,7 +49,7 @@ export default class Week extends Component {
             ]
             }
           >
-            {this.props.lang.weekDays[0]}:
+            {Translater.t('weekDays')[-1 + this.props.settings.days]}:
             {this.props.selectedWeek && this.props.selectedDay === 1 ? ' :::: ' : ''}
           </Text>
         </TouchableHighlight>
@@ -59,7 +61,7 @@ export default class Week extends Component {
             ]
             }
           >
-            {this.props.lang.weekDays[2]}:
+            {Translater.t('weekDays')[1 + this.props.settings.days]}:
             {this.props.selectedWeek && this.props.selectedDay === 2 ? ' :::: ' : ''}
           </Text>
         </TouchableHighlight>
@@ -71,7 +73,7 @@ export default class Week extends Component {
             ]
             }
           >
-            {this.props.lang.weekDays[4]}:
+            {Translater.t('weekDays')[3 + this.props.settings.days]}:
             {this.props.selectedWeek && this.props.selectedDay === 3 ? ' :::: ' : ''}
           </Text>
         </TouchableHighlight>
@@ -82,8 +84,8 @@ export default class Week extends Component {
 
 Week.propTypes = {
   onPressDay: React.PropTypes.func,
-  lang: React.PropTypes.object,
   week: React.PropTypes.object,
+  settings: React.PropTypes.object,
   selectedWeek: React.PropTypes.bool,
   selectedDay: React.PropTypes.number,
 };
@@ -99,7 +101,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   week_done: {
-    color: 'green',
+    color: 'black',
   },
   week_wait: {
     color: 'blue',
@@ -114,6 +116,6 @@ const styles = StyleSheet.create({
     color: 'grey',
   },
   dayStatus_inProgress: {
-    color: 'orange',
+    color: 'green',
   },
 });

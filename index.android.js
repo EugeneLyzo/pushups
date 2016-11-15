@@ -8,6 +8,7 @@ import {
   AppRegistry,
   AsyncStorage,
   ListView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableHighlight,
@@ -18,35 +19,42 @@ import Drawer from 'react-native-drawer';
 import Day from './src/components/Day';
 import TimeCountdown from './src/components/TimeCountdown';
 import Week from './src/components/Week';
+import Settings from './src/components/Settings';
 
 import CONFIG from './src/constants/Config';
-import LANG_RU from './src/constants/lang/ru';
-import LANG_EN from './src/constants/lang/en';
 import PLAN from './src/constants/Plan';
-
-const LANG = CONFIG.lang === 'ru' ? LANG_RU : LANG_EN;
+import Translater from './src/utils/Translater';
 
 export default class pushups extends Component {
 
   constructor(props) {
     super(props);
 
+    this.userData = {
+      plan: {},
+      settings: {
+        days: 1,
+      },
+    };
+
+    this.countdownAttempt = 1; // used to prevent update after rotate
+
     this.init();
   }
 
   init() {
-    const firstLoad = !!this.userPlan;
-    this.userPlan = PLAN;
-    AsyncStorage.getItem(CONFIG.storeUserPlanKey).then((value) => {
+    const firstLoad = !!this.userData.plan;
+    this.userData.plan = PLAN;
+    AsyncStorage.getItem(CONFIG.storeUserDataKey).then((value) => {
       if (value) {
-        this.userPlan = JSON.parse(value);
-        // console.log('AsyncStorage.getItem done', this.userPlan);
+        this.userData = JSON.parse(value);
+        // console.log('AsyncStorage.getItem done', this.userData);
       }
 
       let week = -1;
       let day = 1;
 
-      this.userPlan.forEach((userWeek, i) => {
+      this.userData.plan.forEach((userWeek, i) => {
         // check week status
         if (week !== -1) return;
         let complete = true;
@@ -64,6 +72,11 @@ export default class pushups extends Component {
           day = currentDay + 1;
         }
       });
+
+      if (week === -1) {
+        week = 5;
+        day = 3;
+      } // cource completed and we don't have any empty attempts
 
       this.updateLists(week, day);
       if (firstLoad) {
@@ -83,10 +96,10 @@ export default class pushups extends Component {
 
   restoreDefaults() {
     // deep clear, because object was updated by link
-    this.userPlan.forEach((week, i) => {
-      week.day1.forEach((attempt, j) => (this.userPlan[i].day1[j].done = false));
-      week.day2.forEach((attempt, j) => (this.userPlan[i].day2[j].done = false));
-      week.day3.forEach((attempt, j) => (this.userPlan[i].day3[j].done = false));
+    this.userData.plan.forEach((week, i) => {
+      week.day1.forEach((attempt, j) => (this.userData.plan[i].day1[j].done = false));
+      week.day2.forEach((attempt, j) => (this.userData.plan[i].day2[j].done = false));
+      week.day3.forEach((attempt, j) => (this.userData.plan[i].day3[j].done = false));
     });
 
     AsyncStorage.clear().then(() => {
@@ -95,11 +108,15 @@ export default class pushups extends Component {
     }).done();
   }
 
+  closeDrawer() {
+    this._drawer.close();
+  }
+
   updateLists(selectedWeek, selectedDay) {
     const ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 });
     this.lists = {
-      weeks: ds.cloneWithRows(this.userPlan),
-      selectedDay: ds.cloneWithRows(this.userPlan[selectedWeek][`day${selectedDay}`]),
+      weeks: ds.cloneWithRows(this.userData.plan),
+      selectedDay: ds.cloneWithRows(this.userData.plan[selectedWeek][`day${selectedDay}`]),
     };
   }
 
@@ -115,20 +132,60 @@ export default class pushups extends Component {
   onPressAttempt(attemptId) {
     const week = this.state.selectedDay.week;
     const day = this.state.selectedDay.day;
-    // console.log('onPressAttempt', arguments, this, this.userPlan[week][`day${day}`][attemptId]);
-    this.userPlan[week][`day${day}`][attemptId].done =
-      !this.userPlan[week][`day${day}`][attemptId].done;
+    // console.log('onPressAttempt', attemptId, this);
+    this.userData.plan[week][`day${day}`][attemptId].done =
+      !this.userData.plan[week][`day${day}`][attemptId].done;
 
     this.updateLists(week, day);
+    this.countdownAttempt += 1;
 
-    AsyncStorage.setItem(CONFIG.storeUserPlanKey, JSON.stringify(this.userPlan)).then(() => {
-      // console.log('AsyncStorage.setItem done', this.userPlan);
+    AsyncStorage.setItem(CONFIG.storeUserDataKey, JSON.stringify(this.userData)).then(() => {
+      // console.log('AsyncStorage.setItem done', attemptId);
       this.setState({
         selectedDay: { week, day },
-        countdownTime: CONFIG.timerTime,
+        countdownTime: this.userData.plan[week][`day${day}`].length > (+attemptId + 1)
+                          ? CONFIG.timerTime : 0,
       });
     }).done();
   }
+
+  saveSettings(settings) {
+    this.userData.settings = settings;
+    AsyncStorage.setItem(CONFIG.storeUserDataKey, JSON.stringify(this.userData)).then(() => {
+      // console.log('AsyncStorage.setItem done', this.userData);
+      this.init();
+    }).done();
+  }
+
+  getCompletePercent() {
+    let total = 0;
+    let completed = 0;
+
+    this.userData.plan.forEach((week, i) => {
+      week.day1.forEach((attempt, j) => {
+        completed += this.userData.plan[i].day1[j].done ? 1 : 0;
+        total += 1;
+      });
+      week.day2.forEach((attempt, j) => {
+        completed += this.userData.plan[i].day2[j].done ? 1 : 0;
+        total += 1;
+      });
+      week.day3.forEach((attempt, j) => {
+        completed += this.userData.plan[i].day3[j].done ? 1 : 0;
+        total += 1;
+      });
+    });
+
+    const percent = Math.round((completed / total) * 1000) / 10;
+    let progress = '[';
+    let i;
+    for (i = 10; i < percent; i += 10) progress += '|';
+    for (i = 100; i > percent; i -= 10) progress += '.';
+    progress += ']';
+
+    return `${percent}% \n ${progress}`;
+  }
+
 
   // ------------------------------------------
   // ------------------------------------------
@@ -138,23 +195,12 @@ export default class pushups extends Component {
       <Drawer
         type="displace"
         content={(
-          <View>
-            <View>
-              <Text style={styles.caption}>{LANG.settings_title}</Text>
-              <Text>{LANG.settings_lang}: {LANG.settings_langName}</Text>
-            </View>
-            <View>
-              <Text> {'\n\n\n'}</Text>
-              <Text> {'\n\n\n'}</Text>
-              <TouchableHighlight onPress={() => this.restoreDefaults()}>
-                <Text>{LANG.settings_restoreDefaults}</Text>
-              </TouchableHighlight>
-              <Text> {'\n\n\n'}</Text>
-              <TouchableHighlight onPress={() => this._drawer.close()}>
-                <Text>{LANG.settings_close}</Text>
-              </TouchableHighlight>
-            </View>
-          </View>
+          <Settings
+            settings={this.userData.settings}
+            saveSettings={(settings) => this.saveSettings(settings)}
+            closeDrawer={() => this.closeDrawer()}
+            restoreDefaults={() => this.restoreDefaults()}
+          />
         )}
         tapToClose
         openDrawerOffset={0.2} // 20% gap on the right side of drawer
@@ -166,42 +212,50 @@ export default class pushups extends Component {
         })}
         ref={(ref) => (this._drawer = ref)}
       >
-        <View style={styles.container}>
-          <Text style={styles.caption}>
-            {LANG.title}: {LANG.week} {this.state.selectedDay.week + 1}, {
-                                                          LANG.day} {this.state.selectedDay.day}
-          </Text>
-          <TouchableHighlight
-            onPress={() => this._drawer.open()}
-          ><Text>{LANG.settings_title}</Text></TouchableHighlight>
-          <View style={{ flexDirection: 'row' }}>
-            <ListView
-              dataSource={this.lists.weeks}
-              renderRow={(week) => (
-                <Week
-                  lang={LANG}
-                  week={week}
-                  onPressDay={(weekId, day) => this.onPressDay(weekId, day)}
-                  selectedWeek={week.id === this.state.selectedDay.week}
-                  selectedDay={this.state.selectedDay.day}
-                >${LANG.week} {week.name}</Week>
-              )}
-            />
-            <ListView
-              dataSource={this.lists.selectedDay}
-              renderRow={(day, sectionID, rowID) => (
-                <Day
-                  day={day}
-                  attemptId={rowID}
-                  onPressAttempt={(attemptId) => this.onPressAttempt(attemptId)}
+        <ScrollView>
+          <View style={styles.container}>
+            <Text style={styles.caption}>
+              {Translater.t('title')}: {Translater.t('week')} {this.state.selectedDay.week + 1}, {
+                                      Translater.t('day')} {this.state.selectedDay.day}
+            </Text>
+            <TouchableHighlight
+              onPress={() => this._drawer.open()}
+            ><Text>{Translater.t('settings_title')}</Text></TouchableHighlight>
+            <View style={{ flexDirection: 'row' }}>
+              <ListView
+                dataSource={this.lists.weeks}
+                renderRow={(week) => (
+                  <Week
+                    week={week}
+                    settings={this.userData.settings}
+                    onPressDay={(weekId, day) => this.onPressDay(weekId, day)}
+                    selectedWeek={week.id === this.state.selectedDay.week}
+                    selectedDay={this.state.selectedDay.day}
+                  >${Translater.t('week')} {week.name}</Week>
+                )}
+              />
+              <ListView
+                dataSource={this.lists.selectedDay}
+                renderRow={(day, sectionID, rowID) => (
+                  <Day
+                    day={day}
+                    attemptId={rowID}
+                    onPressAttempt={(attemptId) => this.onPressAttempt(attemptId)}
+                  />
+                )}
+              />
+              <View style={styles.timer}>
+                <TimeCountdown
+                  countdownTime={this.state.countdownTime}
+                  attempt={this.countdownAttempt}
                 />
-              )}
-            />
-            <View style={styles.timer}>
-              <TimeCountdown countdownTime={this.state.countdownTime} />
+                <Text style={styles.complete}>
+                  {this.getCompletePercent()}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
+        </ScrollView>
       </Drawer>
     ) : <Text>Loading...</Text>;
   }
@@ -219,6 +273,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: 'center',
     margin: 10,
+  },
+  complete: {
+    marginTop: 20,
+    color: 'green',
+    fontSize: 14,
   },
   timer: {
     flex: 0.4,
